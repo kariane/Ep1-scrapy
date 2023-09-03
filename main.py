@@ -11,16 +11,17 @@ class PokeSpider(scrapy.Spider):
       yield response.follow(link.get(), self.parse_pokemon)
 
   def parse_pokemon(self, response):
-    name = response.css('h1::text')
+    name = response.css('h1::text').get()
     number = response.css(
-      'table.vitals-table > tbody > tr:nth-child(1) > td > strong::text')
+      'table.vitals-table > tbody > tr:nth-child(1) > td > strong::text').get(
+      )
     height = response.css(
-      'table.vitals-table > tbody > tr:nth-child(4) > td::text')
+      'table.vitals-table > tbody > tr:nth-child(4) > td::text').get()
     weight = response.css(
-      'table.vitals-table > tbody > tr:nth-child(5) > td::text')
+      'table.vitals-table > tbody > tr:nth-child(5) > td::text').get()
     type = response.css('th:contains("Type") + td a::text').getall()
 
-    pokemon_types = [t.strip() for t in type]
+    pokemon_types = [t.strip() for t in type if t.strip()]
 
     evolution = response.css(
       'h2:contains("Evolution chart") + div.infocard-list-evo > div.infocard')
@@ -30,11 +31,13 @@ class PokeSpider(scrapy.Spider):
       poke_num = element.css('small::text').get()
       poke_name = element.css('a.ent-name::text').get()
       poke_url = element.css('a.ent-name::attr(href)').get()
-      next_evolutions.append({
-        'Number': poke_num,
-        'Name': poke_name,
-        'URL': poke_url
-      })
+
+      if poke_num and poke_name and poke_url:
+        next_evolutions.append({
+          'Number': poke_num,
+          'Name': poke_name,
+          'URL': poke_url
+        })
 
     ability_links = response.css(
       'table.vitals-table > tbody > tr:nth-child(6) td a::attr(href)').getall(
@@ -44,19 +47,23 @@ class PokeSpider(scrapy.Spider):
       yield response.follow(ability_link,
                             self.parse_ability,
                             meta={
-                              'Number': number.get(),
+                              'Number': number,
                               'Page URL': response.url,
-                              'Name': name.get(),
+                              'Name': name,
                               'Next Evolutions': next_evolutions,
-                              'Height': height.get(),
-                              'Weight': weight.get(),
+                              'Height': height,
+                              'Weight': weight,
                               'Types': pokemon_types,
                             })
 
   def parse_ability(self, response):
-    ability_name = response.css('h1::text')
+    ability_name = response.css('h1::text').get()
     ability_description = response.selector.xpath(
-      "//div[@class='grid-col span-md-12 span-lg-6']/p/text()")
+      "//div[@class='grid-col span-md-12 span-lg-6']/p/text()").getall()
+
+    cleaned_ability_description = [
+      desc.strip() for desc in ability_description if desc.strip()
+    ]
 
     yield {
       'Number': response.meta['Number'],
@@ -67,8 +74,8 @@ class PokeSpider(scrapy.Spider):
       'Weight': response.meta['Weight'],
       'Types': response.meta['Types'],
       'Ability': {
-        'Name': ability_name.get(),
+        'Name': ability_name,
         'URL': response.url,
-        'Effect Description': ability_description.extract()
+        'Description': cleaned_ability_description,
       }
     }
