@@ -1,6 +1,5 @@
 import scrapy
 
-
 class PokeSpider(scrapy.Spider):
   name = 'pokespider'
   start_urls = ['https://pokemondb.net/pokedex/all']
