@@ -6,70 +6,70 @@ class PokeSpider(scrapy.Spider):
   start_urls = ['https://pokemondb.net/pokedex/all']
 
   def parse(self, response):
-    linhas = response.css('table#pokedex > tbody > tr')
-    for linha in linhas:
-      link = linha.css("td:nth-child(2) > a::attr(href)")
-      yield response.follow(link.get(), self.parser_pokemon)
+    rows = response.css('table#pokedex > tbody > tr')
+    for row in rows:
+      link = row.css("td:nth-child(2) > a::attr(href)")
+      yield response.follow(link.get(), self.parse_pokemon)
 
-  def parser_pokemon(self, response):
-    nome = response.css('h1::text')
-    numero = response.css(
+  def parse_pokemon(self, response):
+    name = response.css('h1::text')
+    number = response.css(
       'table.vitals-table > tbody > tr:nth-child(1) > td > strong::text')
-    altura = response.css(
+    height = response.css(
       'table.vitals-table > tbody > tr:nth-child(4) > td::text')
-    peso = response.css(
+    weight = response.css(
       'table.vitals-table > tbody > tr:nth-child(5) > td::text')
-    tipo = response.css('th:contains("Type") + td a::text').getall()
+    type = response.css('th:contains("Type") + td a::text').getall()
 
-    pokemon_tipos = [t.strip() for t in tipo]
+    pokemon_types = [t.strip() for t in type]
 
-    evolucao = response.css(
+    evolution = response.css(
       'h2:contains("Evolution chart") + div.infocard-list-evo > div.infocard')
 
-    proximas_evolucoes = []
-    for element in evolucao:
+    next_evolutions = []
+    for element in evolution:
       poke_num = element.css('small::text').get()
-      poke_nome = element.css('a.ent-name::text').get()
+      poke_name = element.css('a.ent-name::text').get()
       poke_url = element.css('a.ent-name::attr(href)').get()
-      proximas_evolucoes.append({
-        'Numero': poke_num,
-        'Nome': poke_nome,
+      next_evolutions.append({
+        'Number': poke_num,
+        'Name': poke_name,
         'URL': poke_url
       })
 
-    habilidade_links = response.css(
+    ability_links = response.css(
       'table.vitals-table > tbody > tr:nth-child(6) td a::attr(href)').getall(
       )
 
-    for link_habilidade in habilidade_links:
-      yield response.follow(link_habilidade,
-                            self.parser_habilidade,
+    for ability_link in ability_links:
+      yield response.follow(ability_link,
+                            self.parse_ability,
                             meta={
-                              'Numero': numero.get(),
-                              'URL da Pagina': response.url,
-                              'Nome': nome.get(),
-                              'Proximas Evolucoes': proximas_evolucoes,
-                              'Altura': altura.get(),
-                              'Peso': peso.get(),
-                              'Tipos': pokemon_tipos,
+                              'Number': number.get(),
+                              'Page URL': response.url,
+                              'Name': name.get(),
+                              'Next Evolutions': next_evolutions,
+                              'Height': height.get(),
+                              'Weight': weight.get(),
+                              'Types': pokemon_types,
                             })
 
-  def parser_habilidade(self, response):
-    nome_habilidade = response.css('h1::text')
-    descricao_efeito = response.selector.xpath(
+  def parse_ability(self, response):
+    ability_name = response.css('h1::text')
+    ability_description = response.selector.xpath(
       "//div[@class='grid-col span-md-12 span-lg-6']/p/text()")
 
     yield {
-      'Numero': response.meta['Numero'],
-      'URL da Pagina': response.meta['URL da Pagina'],
-      'Nome': response.meta['Nome'],
-      'Proximas Evolucoes': response.meta['Proximas Evolucoes'],
-      'Altura': response.meta['Altura'],
-      'Peso': response.meta['Peso'],
-      'Tipos': response.meta['Tipos'],
-      'Habilidade': {
-        'Nome': nome_habilidade.get(),
+      'Number': response.meta['Number'],
+      'Page URL': response.meta['Page URL'],
+      'Name': response.meta['Name'],
+      'Next Evolutions': response.meta['Next Evolutions'],
+      'Height': response.meta['Height'],
+      'Weight': response.meta['Weight'],
+      'Types': response.meta['Types'],
+      'Ability': {
+        'Name': ability_name.get(),
         'URL': response.url,
-        'Descricao Efeito': descricao_efeito.extract()
+        'Effect Description': ability_description.extract()
       }
     }
